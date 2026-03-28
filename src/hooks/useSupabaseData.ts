@@ -138,6 +138,24 @@ export function useMutateClient() {
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Cliente actualizado"); },
       onError: (e: any) => toast.error(e.message),
     }),
+    remove: useMutation({
+      mutationFn: async (id: string) => {
+        // Delete related records first to avoid orphaned data
+        await supabase.from("attendance").delete().eq("client_id", id);
+        await supabase.from("enrollments").delete().eq("client_id", id);
+        await supabase.from("income").delete().eq("client_id", id);
+        const { error } = await supabase.from("clients").delete().eq("id", id);
+        if (error) throw error;
+      },
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ["clients"] });
+        qc.invalidateQueries({ queryKey: ["enrollments"] });
+        qc.invalidateQueries({ queryKey: ["attendance"] });
+        qc.invalidateQueries({ queryKey: ["income"] });
+        toast.success("Cliente eliminado");
+      },
+      onError: (e: any) => toast.error(e.message),
+    }),
   };
 }
 

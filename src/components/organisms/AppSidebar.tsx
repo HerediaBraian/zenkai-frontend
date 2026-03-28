@@ -32,19 +32,26 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const { signOut } = useAuth();
 
+  const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   const handleLogout = async () => {
+    if (isMobile) setOpenMobile(false);
     await signOut();
     navigate("/login");
   };
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent className="flex flex-col h-full">
+      <SidebarContent className="flex flex-col h-full border-r-0">
         <div className="flex items-center gap-3 px-4 py-7">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
             <Zap className="h-5 w-5 text-sidebar-primary-foreground" />
@@ -66,6 +73,7 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
+                      onClick={handleNavClick}
                       className="flex items-center gap-3 rounded-lg px-3 py-4 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                     >

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Users, Dumbbell, UserCheck, UserX, DollarSign, TrendingUp, Building2, AlertTriangle, Info } from "lucide-react";
+import { Users, Dumbbell, UserCheck, UserX, DollarSign, TrendingUp, Building2, AlertTriangle, Info, Gift, CreditCard } from "lucide-react";
 import { KpiCard } from "@/components/molecules/KpiCard";
 import { OccupancyBar } from "@/components/molecules/OccupancyBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,15 +81,66 @@ export default function DashboardHome() {
   }, [todaySchedules, enrollments]);
 
   const alerts = useMemo(() => {
-    const a: { type: "warning" | "info"; message: string }[] = [];
-    clients.filter(c => c.status === "active" && c.payment_status === "Debe").forEach(c => a.push({ type: "warning", message: `${c.name} ${c.last_name} tiene cuota pendiente` }));
+    const a: { type: "warning" | "info" | "birthday"; message: string }[] = [];
+
+    // Birthday alerts (today + next 3 days)
+    const today = new Date();
+    clients.filter(c => c.status === "active" && c.birth_date).forEach(c => {
+      const birth = new Date(c.birth_date + "T00:00:00");
+      for (let d = 0; d <= 3; d++) {
+        const check = new Date(today);
+        check.setDate(today.getDate() + d);
+        if (birth.getMonth() === check.getMonth() && birth.getDate() === check.getDate()) {
+          const label = d === 0 ? "🎂 ¡Hoy es el cumpleaños de" : d === 1 ? "🎂 Mañana cumple" : `🎂 En ${d} días cumple`;
+          a.push({ type: "birthday", message: `${label} ${c.name} ${c.last_name}!` });
+        }
+      }
+    });
+
+    // Payment renewal alerts based on enroll_date (monthly cycle)
+    // If enroll_date is the 28th, renewal is every 28th. Alert 1 day before and on the day.
+    clients.filter(c => c.status === "active").forEach(c => {
+      const enrollDate = new Date(c.enroll_date + "T00:00:00");
+      const renewalDay = enrollDate.getDate(); // e.g. 28
+      const todayDate = today.getDate();
+      const todayMonth = today.getMonth();
+      const todayYear = today.getFullYear();
+
+      // Next renewal date in current or next month
+      let renewalDate = new Date(todayYear, todayMonth, renewalDay);
+      if (renewalDate < today) {
+        renewalDate = new Date(todayYear, todayMonth + 1, renewalDay);
+      }
+
+      const diffMs = renewalDate.getTime() - new Date(todayYear, todayMonth, todayDate).getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        a.push({ type: "warning", message: `💳 Hoy vence la cuota de ${c.name} ${c.last_name}` });
+      } else if (diffDays === 1) {
+        a.push({ type: "warning", message: `💳 Mañana vence la cuota de ${c.name} ${c.last_name}` });
+      }
+
+      // Already overdue: if payment_status is "Debe"
+      if (c.payment_status === "Debe") {
+        // Only add if not already added as today/tomorrow
+        if (diffDays > 1) {
+          a.push({ type: "warning", message: `${c.name} ${c.last_name} tiene cuota pendiente` });
+        }
+      }
+    });
+
+    // Full capacity alerts
     todayClasses.filter(c => c.occupied >= c.max).forEach(c => a.push({ type: "info", message: `${c.activity} ${c.time} está completa` }));
+
+    // Near capacity alerts
     activities.filter(act => {
       const uniqueClients = new Set(enrollments.filter(e => e.activity_id === act.id).map(e => e.client_id));
       const total = uniqueClients.size;
       return act.status === "active" && total >= act.max_capacity * 0.9 && total < act.max_capacity;
     }).forEach(act => a.push({ type: "info", message: `${act.name} tiene pocos cupos disponibles` }));
-    return a.slice(0, 5);
+
+    return a.slice(0, 10);
   }, [clients, todayClasses, activities, enrollments]);
 
   return (
@@ -179,8 +230,14 @@ export default function DashboardHome() {
             {alerts.length === 0 ? <p className="text-sm text-muted-foreground">Sin alertas</p> : (
               <div className="space-y-3">
                 {alerts.map((a, i) => (
-                  <div key={i} className={`flex items-start gap-3 rounded-lg px-3 py-2 ${a.type === "warning" ? "bg-warning/10 text-warning" : "bg-info/10 text-info"}`}>
-                    {a.type === "warning" ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <Info className="mt-0.5 h-4 w-4 shrink-0" />}
+                  <div key={i} className={`flex items-start gap-3 rounded-lg px-3 py-2 ${
+                    a.type === "warning" ? "bg-warning/10 text-warning" :
+                    a.type === "birthday" ? "bg-primary/10 text-primary" :
+                    "bg-info/10 text-info"
+                  }`}>
+                    {a.type === "warning" ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> :
+                     a.type === "birthday" ? <Gift className="mt-0.5 h-4 w-4 shrink-0" /> :
+                     <Info className="mt-0.5 h-4 w-4 shrink-0" />}
                     <p className="text-sm">{a.message}</p>
                   </div>
                 ))}

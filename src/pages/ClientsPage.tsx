@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/atoms/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useClients, useMutateClient, usePredefinedMessages, useMutatePredefinedMessage, useEnrollments, useActivities, useSchedules, useMutateEnrollment } from "@/hooks/useSupabaseData";
 import { toast } from "sonner";
+import { calculateAge } from "@/lib/calculateAge";
 
 type ClientForm = {
   name: string; last_name: string; phone: string;
@@ -90,7 +92,7 @@ function getWhatsAppLinkData(phone: string, message?: string) {
 
 export default function ClientsPage() {
   const { data: clients = [], isLoading } = useClients();
-  const { create, update } = useMutateClient();
+  const { create, update, remove: removeClient } = useMutateClient();
   const { data: predefinedMessages = [] } = usePredefinedMessages();
   const { create: createMsg, remove: removeMsg } = useMutatePredefinedMessage();
   const { data: enrollments = [] } = useEnrollments();
@@ -105,6 +107,7 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [showMsgManager, setShowMsgManager] = useState(false);
   const [newMsgText, setNewMsgText] = useState("");
+  const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
 
   const activeActivities = activities.filter(a => a.status === "active");
 
@@ -321,6 +324,7 @@ export default function ClientsPage() {
                                 </PopoverContent>
                               </Popover>
                             )}
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteClientId(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -384,6 +388,7 @@ export default function ClientsPage() {
                             </PopoverContent>
                           </Popover>
                         )}
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteClientId(c.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                       </div>
                     </div>
                   </div>
@@ -414,7 +419,7 @@ export default function ClientsPage() {
                   ) : <p className="text-sm font-medium">—</p>}
                 </div>
                 <div><Label className="text-muted-foreground text-xs">Actividad</Label><p className="text-sm font-medium">{clientActivities[selectedClient.id]?.join(", ") || "—"}</p></div>
-                <div><Label className="text-muted-foreground text-xs">Nacimiento</Label><p className="text-sm font-medium">{selectedClient.birth_date || "—"}</p></div>
+                <div><Label className="text-muted-foreground text-xs">Nacimiento</Label><p className="text-sm font-medium">{selectedClient.birth_date ? `${selectedClient.birth_date} (${calculateAge(selectedClient.birth_date)} años)` : "—"}</p></div>
                 <div><Label className="text-muted-foreground text-xs">Inscripción</Label><p className="text-sm font-medium">{selectedClient.enroll_date}</p></div>
                 <div><Label className="text-muted-foreground text-xs">Estado</Label><div className="mt-1"><StatusBadge status={selectedClient.status} /></div></div>
                 <div><Label className="text-muted-foreground text-xs">Cuota</Label><p className={`text-sm font-medium ${selectedClient.payment_status === "Al día" ? "text-success" : "text-destructive"}`}>{selectedClient.payment_status}</p></div>
@@ -513,6 +518,32 @@ export default function ClientsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteClientId} onOpenChange={() => setDeleteClientId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará al cliente y todos sus datos asociados (inscripciones, asistencias e ingresos vinculados). No se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (deleteClientId) {
+                  await removeClient.mutateAsync(deleteClientId);
+                  setDeleteClientId(null);
+                }
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

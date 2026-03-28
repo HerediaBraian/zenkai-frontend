@@ -6,9 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { OccupancyBar } from "@/components/molecules/OccupancyBar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Edit2, Power } from "lucide-react";
-import { useActivities, useEnrollments, useMutateActivity } from "@/hooks/useSupabaseData";
+import { Plus, Users, Edit2, Power, Eye } from "lucide-react";
+import { useActivities, useEnrollments, useClients, useMutateActivity } from "@/hooks/useSupabaseData";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const colors = [
   "hsl(160, 84%, 39%)", "hsl(200, 80%, 55%)", "hsl(35, 92%, 60%)",
@@ -27,15 +27,27 @@ const emptyForm: Form = { name: "", description: "", color: colors[0], max_capac
 export default function ActivitiesPage() {
   const { data: activities = [], isLoading } = useActivities();
   const { data: enrollments = [] } = useEnrollments();
+  const { data: clients = [] } = useClients();
   const { create, update } = useMutateActivity();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(emptyForm);
+  const [viewActivityId, setViewActivityId] = useState<string | null>(null);
 
+  // Unique clients count per activity
   const uniqueClientsCount = (actId: string) => {
     const uniqueClients = new Set(enrollments.filter(e => e.activity_id === actId).map(e => e.client_id));
     return uniqueClients.size;
   };
+
+  // Get unique client objects for an activity
+  const getActivityClients = (actId: string) => {
+    const uniqueClientIds = new Set(enrollments.filter(e => e.activity_id === actId).map(e => e.client_id));
+    return clients.filter(c => uniqueClientIds.has(c.id));
+  };
+
+  const viewActivity = activities.find(a => a.id === viewActivityId);
+  const viewClients = viewActivityId ? getActivityClients(viewActivityId) : [];
 
   const openNew = () => { setForm(emptyForm); setEditId(null); setShowForm(true); };
   const openEdit = (a: any) => {
@@ -80,6 +92,7 @@ export default function ActivitiesPage() {
                   <OccupancyBar current={enrolled} max={a.max_capacity} label="Ocupación" />
                   {a.instructor && <p className="text-xs text-muted-foreground">Instructor: {a.instructor}</p>}
                   <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setViewActivityId(a.id)}><Eye className="h-3.5 w-3.5 mr-1" />Ver</Button>
                     <Button variant="ghost" size="sm" onClick={() => openEdit(a)}><Edit2 className="h-3.5 w-3.5 mr-1" />Editar</Button>
                     <Button variant="ghost" size="sm" onClick={() => toggleStatus(a)}><Power className="h-3.5 w-3.5 mr-1" />{a.status === "active" ? "Desactivar" : "Activar"}</Button>
                   </div>
@@ -91,6 +104,34 @@ export default function ActivitiesPage() {
         </div>
       )}
 
+      {/* View activity clients modal */}
+      <Dialog open={!!viewActivityId} onOpenChange={() => setViewActivityId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clientes en {viewActivity?.name || ""}</DialogTitle>
+          </DialogHeader>
+          {viewClients.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No hay clientes inscriptos en esta actividad.</p>
+          ) : (
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {viewClients.map(c => (
+                <div key={c.id} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">{c.name} {c.last_name}</p>
+                    <p className="text-xs text-muted-foreground">{c.phone || "Sin teléfono"}</p>
+                  </div>
+                  <span className={`text-xs font-medium ${c.status === "active" ? "text-primary" : "text-muted-foreground"}`}>
+                    {c.status === "active" ? "Activo" : "Inactivo"}
+                  </span>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground text-center pt-2">{viewClients.length} cliente{viewClients.length !== 1 ? "s" : ""}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create/Edit form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editId ? "Editar actividad" : "Nueva actividad"}</DialogTitle></DialogHeader>
