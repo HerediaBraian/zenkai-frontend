@@ -9,4 +9,3 @@ export function calculateAge(birthDate: string): number {
     }
     return age;
   }
-  export default calculateAge;
