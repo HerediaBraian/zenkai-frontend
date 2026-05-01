@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Check, X } from "lucide-react";
 import { useSchedules, useEnrollments, useAttendance, useMutateAttendance, useActivities } from "@/hooks/useSupabaseData";
+import type { EnrollmentWithClients, ScheduleWithActivity } from "@/types/db";
 
 const dayNames: Record<number, string> = { 0: "Domingo", 1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves", 5: "Viernes", 6: "Sábado" };
 
@@ -17,12 +18,19 @@ export default function AttendancePage() {
   const { data: activities = [] } = useActivities();
   const mutate = useMutateAttendance();
 
-  const activeActivityIds = new Set(activities.filter(a => a.status === "active").map(a => a.id));
+  const activeActivityIds = useMemo(
+    () => new Set(activities.filter((a) => a.status === "active").map((a) => a.id)),
+    [activities]
+  );
   const selectedDay = dayNames[new Date(date + "T12:00:00").getDay()];
 
-  const todaySchedules = useMemo(() =>
-    schedules.filter(s => s.day_of_week === selectedDay && s.status === "active" && activeActivityIds.has(s.activity_id)),
-  [schedules, selectedDay, activities]);
+  const todaySchedules = useMemo(
+    () =>
+      schedules.filter(
+        (s) => s.day_of_week === selectedDay && s.status === "active" && activeActivityIds.has(s.activity_id)
+      ),
+    [schedules, selectedDay, activeActivityIds]
+  );
 
   const studentsForDay = useMemo(() => {
     const result: { client_id: string; client_name: string; activity_id: string; activity_name: string; schedule_id: string; time: string; status: string }[] = [];
@@ -31,8 +39,9 @@ export default function AttendancePage() {
       const schEnrollments = enrollments.filter(e => e.schedule_id === sched.id);
       for (const enr of schEnrollments) {
         const att = attendance.find(a => a.client_id === enr.client_id && a.schedule_id === sched.id);
-        const client = (enr as any).clients;
-        const act = (sched as any).activities;
+        const row = enr as EnrollmentWithClients;
+        const client = row.clients;
+        const act = (sched as ScheduleWithActivity).activities;
         result.push({
           client_id: enr.client_id,
           client_name: client ? `${client.name} ${client.last_name}` : "—",

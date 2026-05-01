@@ -7,10 +7,14 @@ import {
   ClipboardCheck,
   LogOut,
   Zap,
+  Flame,
+  Shield,
+  type LucideIcon,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrentRole, AppRole } from "@/hooks/useRole";
 import {
   Sidebar,
   SidebarContent,
@@ -22,13 +26,17 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Actividades", url: "/actividades", icon: Dumbbell },
-  { title: "Horarios", url: "/horarios", icon: Clock },
-  { title: "Ingresos", url: "/ingresos", icon: DollarSign },
-  { title: "Asistencia", url: "/asistencia", icon: ClipboardCheck },
+type NavItem = { title: string; url: string; icon: LucideIcon; allow: AppRole[] };
+
+const navItems: NavItem[] = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, allow: ["super_admin", "admin", "usuario"] },
+  { title: "Clientes", url: "/clientes", icon: Users, allow: ["super_admin", "admin", "usuario"] },
+  { title: "Actividades", url: "/actividades", icon: Dumbbell, allow: ["super_admin", "admin", "usuario"] },
+  { title: "Horarios", url: "/horarios", icon: Clock, allow: ["super_admin", "admin", "usuario"] },
+  { title: "WODs", url: "/wods", icon: Flame, allow: ["super_admin"] },
+  { title: "Ingresos", url: "/ingresos", icon: DollarSign, allow: ["super_admin", "admin"] },
+  { title: "Asistencia", url: "/asistencia", icon: ClipboardCheck, allow: ["super_admin", "admin", "usuario"] },
+  { title: "Administración", url: "/admin", icon: Shield, allow: ["super_admin", "admin"] },
 ];
 
 export function AppSidebar() {
@@ -36,6 +44,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { role } = useCurrentRole();
+  const visibleItems = role ? navItems.filter((n) => n.allow.includes(role)) : [];
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -67,7 +77,7 @@ export function AppSidebar() {
         <SidebarGroup className="flex-1">
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title} className="mb-1">
                   <SidebarMenuButton asChild>
                     <NavLink

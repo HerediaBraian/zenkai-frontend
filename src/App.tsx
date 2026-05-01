@@ -11,8 +11,11 @@ import ActivitiesPage from "./pages/ActivitiesPage";
 import SchedulePage from "./pages/SchedulePage";
 import IncomePage from "./pages/IncomePage";
 import AttendancePage from "./pages/AttendancePage";
+import WodsPage from "./pages/WodsPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
+import AdminPage from "./pages/AdminPage";
+import { RoleGuard } from "./components/RoleGuard";
 
 const queryClient = new QueryClient();
 
@@ -27,8 +30,16 @@ function ProtectedRoutes() {
         <Route path="/clientes" element={<ClientsPage />} />
         <Route path="/actividades" element={<ActivitiesPage />} />
         <Route path="/horarios" element={<SchedulePage />} />
-        <Route path="/ingresos" element={<IncomePage />} />
+        <Route path="/ingresos" element={
+          <RoleGuard allow={["super_admin", "admin"]}><IncomePage /></RoleGuard>
+        } />
         <Route path="/asistencia" element={<AttendancePage />} />
+        <Route path="/wods" element={
+          <RoleGuard allow={["super_admin"]}><WodsPage /></RoleGuard>
+        } />
+        <Route path="/admin" element={
+          <RoleGuard allow={["super_admin", "admin"]}><AdminPage /></RoleGuard>
+        } />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>

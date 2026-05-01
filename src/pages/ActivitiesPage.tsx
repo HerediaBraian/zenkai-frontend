@@ -8,6 +8,7 @@ import { OccupancyBar } from "@/components/molecules/OccupancyBar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Users, Edit2, Power, Eye } from "lucide-react";
 import { useActivities, useEnrollments, useClients, useMutateActivity } from "@/hooks/useSupabaseData";
+import type { Tables } from "@/integrations/supabase/types";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const colors = [
@@ -50,7 +51,7 @@ export default function ActivitiesPage() {
   const viewClients = viewActivityId ? getActivityClients(viewActivityId) : [];
 
   const openNew = () => { setForm(emptyForm); setEditId(null); setShowForm(true); };
-  const openEdit = (a: any) => {
+  const openEdit = (a: Tables<"activities">) => {
     setForm({ name: a.name, description: a.description || "", color: a.color, max_capacity: a.max_capacity, instructor: a.instructor || "", status: a.status });
     setEditId(a.id); setShowForm(true);
   };
@@ -60,11 +61,11 @@ export default function ActivitiesPage() {
     else await create.mutateAsync(form);
     setShowForm(false);
   };
-  const toggleStatus = async (a: any) => {
+  const toggleStatus = async (a: Tables<"activities">) => {
     await update.mutateAsync({ id: a.id, status: a.status === "active" ? "inactive" : "active" });
   };
 
-  const set = (k: keyof Form, v: any) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k: keyof Form, v: Form[keyof Form]) => setForm(f => ({ ...f, [k]: v }));
 
   return (
     <div className="space-y-6">

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, TrendingUp, Building2, Plus, Trash2, Settings2 } from "lucide-react";
 import { useIncome, useFinancialConfig, useUpsertFinancialConfig, useMutateIncome, useClients } from "@/hooks/useSupabaseData";
+import type { IncomeWithClient } from "@/types/db";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
 
 export default function IncomePage() {
@@ -154,16 +155,21 @@ export default function IncomePage() {
         <CardContent>
           {incomeList.length === 0 ? <p className="text-muted-foreground text-sm text-center py-6">Sin ingresos registrados</p> : (
             <div className="space-y-2">
-              {incomeList.slice(0, 20).map(i => (
+              {incomeList.slice(0, 20).map((i) => {
+                const client = (i as IncomeWithClient).clients;
+                return (
                 <div key={i.id} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">${Number(i.amount).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground truncate">{i.date} {(i as any).clients ? `— ${(i as any).clients.name} ${(i as any).clients.last_name}` : ""}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {i.date}{client ? ` — ${client.name} ${client.last_name}` : ""}
+                    </p>
                     {i.notes && <p className="text-xs text-muted-foreground truncate">{i.notes}</p>}
                   </div>
                   <Button variant="ghost" size="icon" className="shrink-0" onClick={() => remove.mutateAsync(i.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

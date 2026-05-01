@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Zap } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -25,8 +26,8 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-    } catch (error: any) {
-      toast.error(error.message || "Error de autenticación");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Error de autenticación");
     } finally {
       setLoading(false);
     }

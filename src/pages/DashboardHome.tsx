@@ -5,6 +5,8 @@ import { OccupancyBar } from "@/components/molecules/OccupancyBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useClients, useActivities, useSchedules, useEnrollments, useIncome, useFinancialConfig } from "@/hooks/useSupabaseData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { PushNotificationsCard } from "@/components/molecules/PushNotificationsCard";
+import type { EnrollmentWithClients, ScheduleWithActivity } from "@/types/db";
 
 const dayNames: Record<number, string> = { 0: "Domingo", 1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves", 5: "Viernes", 6: "Sábado" };
 
@@ -28,14 +30,14 @@ export default function DashboardHome() {
   const activeClients = clients.filter(c => c.status === "active").length;
   const activeActivities = activities.filter(a => a.status === "active").length;
 
-  const today = dayNames[new Date().getDay()];
+  const weekdayLabel = dayNames[new Date().getDay()];
   const activeActivityIds = new Set(activities.filter(a => a.status === "active").map(a => a.id));
-  const todaySchedules = schedules.filter(s => s.day_of_week === today && s.status === "active" && activeActivityIds.has(s.activity_id));
+  const todaySchedules = schedules.filter(s => s.day_of_week === weekdayLabel && s.status === "active" && activeActivityIds.has(s.activity_id));
 
   const todayOccupied = todaySchedules.reduce((s, sch) => s + enrollments.filter(e => e.schedule_id === sch.id).length, 0);
   const todayMax = todaySchedules.reduce((s, sch) => {
-    const act = (sch as any).activities;
-    return s + (act?.max_capacity || 20);
+    const act = (sch as ScheduleWithActivity).activities;
+    return s + (act?.max_capacity ?? 20);
   }, 0);
 
   const now = new Date();
@@ -61,9 +63,9 @@ export default function DashboardHome() {
   }, [incomeList, myPct, rentPct]);
 
   const todayClasses = todaySchedules.map(s => {
-    const act = (s as any).activities;
+    const act = (s as ScheduleWithActivity).activities;
     const enrolled = enrollments.filter(e => e.schedule_id === s.id).length;
-    const cap = act?.max_capacity || 20;
+    const cap = act?.max_capacity ?? 20;
     return { time: s.start_time.slice(0, 5), activity: act?.name || "—", occupied: enrolled, max: cap, color: act?.color || "hsl(160, 84%, 39%)" };
   }).sort((a, b) => a.time.localeCompare(b.time));
 
@@ -71,9 +73,10 @@ export default function DashboardHome() {
     const result: { name: string; activity: string; time: string }[] = [];
     for (const sched of todaySchedules) {
       const schEnr = enrollments.filter(e => e.schedule_id === sched.id);
-      const act = (sched as any).activities;
+      const act = (sched as ScheduleWithActivity).activities;
       for (const e of schEnr) {
-        const c = (e as any).clients;
+        const row = e as EnrollmentWithClients;
+        const c = row.clients;
         result.push({ name: c ? `${c.name} ${c.last_name}` : "—", activity: act?.name || "—", time: sched.start_time.slice(0, 5) });
       }
     }
@@ -145,6 +148,7 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-6">
+      <PushNotificationsCard />
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Clientes activos" value={activeClients} icon={Users} variant="primary" />
         <KpiCard title="Actividades" value={activeActivities} icon={Dumbbell} variant="accent" />

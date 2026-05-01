@@ -1,5 +1,8 @@
 import { useState, useMemo } from "react";
-import { Search, Plus, Edit2, UserX, UserCheck, MessageCircle, Trash2, ChevronDown } from "lucide-react";
+import { Search, Plus, Edit2, UserX, UserCheck, MessageCircle, Trash2, ChevronDown, Send, TrendingUp } from "lucide-react";
+import { BulkMessageDialog } from "@/components/organisms/BulkMessageDialog";
+import { ClientWodProgressDialog } from "@/components/organisms/ClientWodProgressDialog";
+import { useCurrentRole } from "@/hooks/useRole";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useClients, useMutateClient, usePredefinedMessages, useMutatePredefinedMessage, useEnrollments, useActivities, useSchedules, useMutateEnrollment } from "@/hooks/useSupabaseData";
 import { toast } from "sonner";
 import { calculateAge } from "@/lib/calculateAge";
+import type { Tables } from "@/integrations/supabase/types";
+import type { EnrollmentWithClients } from "@/types/db";
 
 type ClientForm = {
   name: string; last_name: string; phone: string;
@@ -104,10 +109,13 @@ export default function ClientsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<ClientForm>(emptyForm);
-  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedClient, setSelectedClient] = useState<Tables<"clients"> | null>(null);
   const [showMsgManager, setShowMsgManager] = useState(false);
   const [newMsgText, setNewMsgText] = useState("");
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+  const [bulkMsgText, setBulkMsgText] = useState<string | null>(null);
+  const [wodProgressClient, setWodProgressClient] = useState<{ id: string; name: string } | null>(null);
+  const { isSuperAdmin } = useCurrentRole();
 
   const activeActivities = activities.filter(a => a.status === "active");
 
@@ -115,7 +123,7 @@ export default function ClientsPage() {
   const clientActivities = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const e of enrollments) {
-      const actName = (e as any).activities?.name;
+      const actName = (e as EnrollmentWithClients).activities?.name;
       if (actName) {
         if (!map[e.client_id]) map[e.client_id] = [];
         if (!map[e.client_id].includes(actName)) map[e.client_id].push(actName);
@@ -142,7 +150,7 @@ export default function ClientsPage() {
   });
 
   const openNew = () => { setForm(emptyForm); setEditId(null); setShowForm(true); };
-  const openEdit = (c: any) => {
+  const openEdit = (c: Tables<"clients">) => {
     setForm({
       name: c.name, last_name: c.last_name, phone: c.phone || "",
       birth_date: c.birth_date || "", notes: c.notes || "", status: c.status, payment_status: c.payment_status, enroll_date: c.enroll_date,
@@ -160,7 +168,7 @@ export default function ClientsPage() {
     } else {
       // Create client and get the ID back
       const result = await create.mutateAsync(clientData);
-      clientId = (result as any)?.id || null;
+      clientId = result?.id ?? null;
     }
     // Sync enrollments for this client
     if (clientId) {
@@ -190,7 +198,7 @@ export default function ClientsPage() {
     setShowForm(false);
   };
 
-  const toggleStatus = async (c: any) => {
+  const toggleStatus = async (c: Tables<"clients">) => {
     await update.mutateAsync({ id: c.id, status: c.status === "active" ? "inactive" : "active" });
   };
 
@@ -324,6 +332,11 @@ export default function ClientsPage() {
                                 </PopoverContent>
                               </Popover>
                             )}
+                            {isSuperAdmin && (
+                              <Button variant="ghost" size="icon" title="Progreso WODs" onClick={() => setWodProgressClient({ id: c.id, name: `${c.name} ${c.last_name}` })}>
+                                <TrendingUp className="h-4 w-4 text-primary" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" onClick={() => setDeleteClientId(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                           </div>
                         </TableCell>
@@ -387,6 +400,11 @@ export default function ClientsPage() {
                               ))}
                             </PopoverContent>
                           </Popover>
+                        )}
+                        {isSuperAdmin && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Progreso WODs" onClick={() => setWodProgressClient({ id: c.id, name: `${c.name} ${c.last_name}` })}>
+                            <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                          </Button>
                         )}
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteClientId(c.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                       </div>
@@ -508,9 +526,22 @@ export default function ClientsPage() {
             </div>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {predefinedMessages.map(m => (
-                <div key={m.id} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2">
-                  <span className="text-sm truncate flex-1 mr-2">{m.text}</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeMsg.mutateAsync(m.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                <div key={m.id} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 gap-2">
+                  <span className="text-sm truncate flex-1">{m.text}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => { setShowMsgManager(false); setBulkMsgText(m.text); }}
+                      title="Enviar a todos los clientes"
+                    >
+                      <Send className="mr-1 h-3 w-3" /> Enviar a todos
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeMsg.mutateAsync(m.id)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))}
               {predefinedMessages.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No hay mensajes. Agregá el primero.</p>}
@@ -544,6 +575,25 @@ export default function ClientsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk WhatsApp send */}
+      <BulkMessageDialog
+        open={!!bulkMsgText}
+        onOpenChange={(v) => { if (!v) setBulkMsgText(null); }}
+        messageText={bulkMsgText || ""}
+        clients={clients.map(c => ({ id: c.id, name: c.name, last_name: c.last_name, phone: c.phone }))}
+        buildWhatsAppUrl={(phone, message) => {
+          const data = getWhatsAppLinkData(phone, message);
+          return data?.url || null;
+        }}
+      />
+
+      <ClientWodProgressDialog
+        open={!!wodProgressClient}
+        onOpenChange={(v) => { if (!v) setWodProgressClient(null); }}
+        clientId={wodProgressClient?.id || null}
+        clientName={wodProgressClient?.name || ""}
+      />
     </div>
   );
 }

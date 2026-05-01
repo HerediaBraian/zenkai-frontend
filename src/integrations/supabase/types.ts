@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -110,6 +110,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bulk_message_logs: {
+        Row: {
+          created_at: string
+          failed_count: number
+          failed_ids: string[]
+          id: string
+          message_text: string
+          recipient_ids: string[]
+          sent_count: number
+          sent_ids: string[]
+          total_recipients: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          failed_count?: number
+          failed_ids?: string[]
+          id?: string
+          message_text: string
+          recipient_ids?: string[]
+          sent_count?: number
+          sent_ids?: string[]
+          total_recipients?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          failed_count?: number
+          failed_ids?: string[]
+          id?: string
+          message_text?: string
+          recipient_ids?: string[]
+          sent_count?: number
+          sent_ids?: string[]
+          total_recipients?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       clients: {
         Row: {
@@ -292,6 +331,33 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          reference_date: string
+          reference_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          reference_date: string
+          reference_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          reference_date?: string
+          reference_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       predefined_messages: {
         Row: {
           created_at: string
@@ -312,6 +378,39 @@ export type Database = {
           id?: string
           text?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string
+          p256dh?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
@@ -363,15 +462,155 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_status: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wod_results: {
+        Row: {
+          client_id: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          result_text: string
+          result_value: number | null
+          updated_at: string
+          user_id: string
+          wod_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          result_text?: string
+          result_value?: number | null
+          updated_at?: string
+          user_id: string
+          wod_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          result_text?: string
+          result_value?: number | null
+          updated_at?: string
+          user_id?: string
+          wod_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wod_results_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wod_results_wod_id_fkey"
+            columns: ["wod_id"]
+            isOneToOne: false
+            referencedRelation: "wods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wods: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_super_admin_email: { Args: { _email: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_admin" | "admin" | "usuario"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -498,6 +737,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_admin", "admin", "usuario"],
+    },
   },
 } as const

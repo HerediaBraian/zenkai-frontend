@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
+import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 
 export function useClients() {
   const { user } = useAuth();
@@ -75,7 +77,12 @@ export function useIncome() {
   return useQuery({
     queryKey: ["income", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("income").select("*, clients(name, last_name), activities(name)").order("date", { ascending: false });
+      // Filtro fijo: solo mostrar ingresos desde el inicio de actividades (01/04/2026)
+      const { data, error } = await supabase
+        .from("income")
+        .select("*, clients(name, last_name), activities(name)")
+        .gte("date", "2026-04-01")
+        .order("date", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -113,7 +120,7 @@ export function useUpsertFinancialConfig() {
       qc.invalidateQueries({ queryKey: ["financial_config"] });
       toast.success("Distribución actualizada");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 }
 
@@ -122,21 +129,21 @@ export function useMutateClient() {
   const { user } = useAuth();
   return {
     create: useMutation({
-      mutationFn: async (data: any) => {
+      mutationFn: async (data: Omit<TablesInsert<"clients">, "user_id">) => {
         const { data: result, error } = await supabase.from("clients").insert({ ...data, user_id: user!.id }).select().single();
         if (error) throw error;
         return result;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Cliente creado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     update: useMutation({
-      mutationFn: async ({ id, ...data }: any) => {
+      mutationFn: async ({ id, ...data }: { id: string } & TablesUpdate<"clients">) => {
         const { error } = await supabase.from("clients").update(data).eq("id", id);
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Cliente actualizado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     remove: useMutation({
       mutationFn: async (id: string) => {
@@ -154,7 +161,7 @@ export function useMutateClient() {
         qc.invalidateQueries({ queryKey: ["income"] });
         toast.success("Cliente eliminado");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   };
 }
@@ -164,20 +171,20 @@ export function useMutateActivity() {
   const { user } = useAuth();
   return {
     create: useMutation({
-      mutationFn: async (data: any) => {
+      mutationFn: async (data: Omit<TablesInsert<"activities">, "user_id">) => {
         const { error } = await supabase.from("activities").insert({ ...data, user_id: user!.id });
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["activities"] }); toast.success("Actividad creada"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     update: useMutation({
-      mutationFn: async ({ id, ...data }: any) => {
+      mutationFn: async ({ id, ...data }: { id: string } & TablesUpdate<"activities">) => {
         const { error } = await supabase.from("activities").update(data).eq("id", id);
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["activities"] }); toast.success("Actividad actualizada"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   };
 }
@@ -187,20 +194,20 @@ export function useMutateSchedule() {
   const { user } = useAuth();
   return {
     create: useMutation({
-      mutationFn: async (data: any) => {
+      mutationFn: async (data: Omit<TablesInsert<"schedules">, "user_id">) => {
         const { error } = await supabase.from("schedules").insert({ ...data, user_id: user!.id });
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedules"] }); toast.success("Horario creado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     update: useMutation({
-      mutationFn: async ({ id, ...data }: any) => {
+      mutationFn: async ({ id, ...data }: { id: string } & TablesUpdate<"schedules">) => {
         const { error } = await supabase.from("schedules").update(data).eq("id", id);
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedules"] }); toast.success("Horario actualizado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     remove: useMutation({
       mutationFn: async (id: string) => {
@@ -208,7 +215,7 @@ export function useMutateSchedule() {
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["schedules"] }); toast.success("Horario eliminado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   };
 }
@@ -218,12 +225,12 @@ export function useMutateIncome() {
   const { user } = useAuth();
   return {
     create: useMutation({
-      mutationFn: async (data: any) => {
+      mutationFn: async (data: Omit<TablesInsert<"income">, "user_id">) => {
         const { error } = await supabase.from("income").insert({ ...data, user_id: user!.id });
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["income"] }); toast.success("Ingreso registrado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     remove: useMutation({
       mutationFn: async (id: string) => {
@@ -231,7 +238,7 @@ export function useMutateIncome() {
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["income"] }); toast.success("Ingreso eliminado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   };
 }
@@ -248,7 +255,7 @@ export function useMutateAttendance() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance"] }); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
   });
 }
 
@@ -257,9 +264,9 @@ export function usePredefinedMessages() {
   return useQuery({
     queryKey: ["predefined_messages", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("predefined_messages" as any).select("*").order("created_at");
+      const { data, error } = await supabase.from("predefined_messages").select("*").order("created_at");
       if (error) throw error;
-      return data as any[];
+      return (data ?? []) as Tables<"predefined_messages">[];
     },
     enabled: !!user,
   });
@@ -271,19 +278,19 @@ export function useMutatePredefinedMessage() {
   return {
     create: useMutation({
       mutationFn: async (data: { text: string }) => {
-        const { error } = await supabase.from("predefined_messages" as any).insert({ ...data, user_id: user!.id } as any);
+        const { error } = await supabase.from("predefined_messages").insert({ text: data.text, user_id: user!.id });
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["predefined_messages"] }); toast.success("Mensaje creado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     remove: useMutation({
       mutationFn: async (id: string) => {
-        const { error } = await supabase.from("predefined_messages" as any).delete().eq("id", id);
+        const { error } = await supabase.from("predefined_messages").delete().eq("id", id);
         if (error) throw error;
       },
       onSuccess: () => { qc.invalidateQueries({ queryKey: ["predefined_messages"] }); toast.success("Mensaje eliminado"); },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   };
 }
@@ -302,7 +309,7 @@ export function useMutateEnrollment() {
         qc.invalidateQueries({ queryKey: ["schedules"] });
         toast.success("Inscripción registrada");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
     remove: useMutation({
       mutationFn: async (id: string) => {
@@ -314,7 +321,7 @@ export function useMutateEnrollment() {
         qc.invalidateQueries({ queryKey: ["schedules"] });
         toast.success("Inscripción eliminada");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   };
 }

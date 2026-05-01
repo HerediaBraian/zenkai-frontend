@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { useSchedules, useActivities, useEnrollments, useMutateSchedule } from "@/hooks/useSupabaseData";
+import type { Tables } from "@/integrations/supabase/types";
+import type { ScheduleWithActivity } from "@/types/db";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -36,7 +38,7 @@ export default function SchedulePage() {
   const enrolledCount = (schedId: string) => enrollments.filter(e => e.schedule_id === schedId).length;
 
   const openNew = () => { setForm(emptyForm); setEditId(null); setShowForm(true); };
-  const openEdit = (s: any) => {
+  const openEdit = (s: Tables<"schedules">) => {
     setForm({ activity_id: s.activity_id, days: [s.day_of_week], start_time: s.start_time.slice(0, 5), status: s.status });
     setEditId(s.id); setShowForm(true);
   };
@@ -93,7 +95,7 @@ export default function SchedulePage() {
                   <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">{day}</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     {daySchedules.length === 0 ? <p className="text-sm text-muted-foreground">Sin clases</p> : daySchedules.map(s => {
-                      const act = (s as any).activities;
+                      const act = (s as ScheduleWithActivity).activities;
                       const cap = act?.max_capacity || 20;
                       const enrolled = enrolledCount(s.id);
                       const color = act?.color || "hsl(160, 84%, 39%)";
@@ -128,7 +130,7 @@ export default function SchedulePage() {
                     <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">{day}</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
                       {daySchedules.map(s => {
-                        const act = (s as any).activities;
+                        const act = (s as ScheduleWithActivity).activities;
                         const cap = act?.max_capacity || 20;
                         const color = act?.color || "hsl(160, 84%, 39%)";
                         return (
@@ -162,7 +164,12 @@ export default function SchedulePage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 90%)" />
                     <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
                     <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={100} />
-                    <Tooltip formatter={(v: number, name: string, props: any) => [`${v}% (${props.payload.enrolled}/${props.payload.capacity})`, "Ocupación"]} />
+                    <Tooltip
+                      formatter={(v: number, _name: string, item: { payload?: { enrolled: number; capacity: number } }) => {
+                        const p = item.payload;
+                        return [`${v}% (${p?.enrolled ?? 0}/${p?.capacity ?? 0})`, "Ocupación"];
+                      }}
+                    />
                     <Bar dataKey="pct" name="Ocupación" radius={[0, 4, 4, 0]}>
                       {occupancyData.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
