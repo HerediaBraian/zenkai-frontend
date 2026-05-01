@@ -30,7 +30,8 @@ export function ClientWodProgressDialog({ clientId, clientName, open, onOpenChan
     }
 
     // Merge dates to single chart by date with one series per wod
-    const allDates = Array.from(new Set(results.map((r) => r.date))).sort();
+    const list = results as WodResultWithRelations[];
+    const allDates = Array.from(new Set(list.map((r) => String(r.date)))).sort();
     const chartData = allDates.map((d) => {
       const row: Record<string, string | number> = { date: d };
       for (const k of Object.keys(byWod)) {

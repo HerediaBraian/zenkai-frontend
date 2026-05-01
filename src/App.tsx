@@ -15,7 +15,7 @@ import WodsPage from "./pages/WodsPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import AdminPage from "./pages/AdminPage";
-import { RoleGuard } from "./components/RoleGuard";
+import { RoleGuard } from "@/components/RoleGuard";
 
 const queryClient = new QueryClient();
 

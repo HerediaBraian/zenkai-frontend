@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -44,8 +45,13 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { role } = useCurrentRole();
-  const visibleItems = role ? navItems.filter((n) => n.allow.includes(role)) : [];
+  const { role, loading: roleLoading } = useCurrentRole();
+  /** Mientras cargan roles, mostrar menú base (evita sidebar vacío). Sin rol tras cargar → mismo menú que "usuario" (RLS/RoleGuard siguen protegiendo rutas). */
+  const visibleItems = useMemo(() => {
+    const effective = role ?? (!roleLoading ? ("usuario" as AppRole) : null);
+    if (effective) return navItems.filter((n) => n.allow.includes(effective));
+    return navItems;
+  }, [role, roleLoading]);
 
   const handleNavClick = () => {
     if (isMobile) {
